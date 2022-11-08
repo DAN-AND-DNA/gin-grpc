@@ -11,22 +11,29 @@ import (
 	"net/http"
 )
 
-type PathToServiceName func(c *gin.Context) string
-type GrpcHandlers map[string]Handler
-
 type Handler struct {
-	ReqProto proto.Message
-	Handle   func(context.Context, interface{}) (interface{}, error)
+	GetProto    func() proto.Message
+	PutProto    func(proto.Message)
+	HandleProto func(context.Context, interface{}) (interface{}, error)
+}
+
+type Option interface {
+	PathToGrpcService(c *gin.Context) string
+	GetHandler(string) (*Handler, bool)
+	SetHandler(string, *Handler)
 }
 
 type GrpcCtxOption interface {
 	Apply(ctx context.Context) context.Context
 }
 
-func GinGrpc(path2Service PathToServiceName, grpcHandlers GrpcHandlers, httpHeader bool, options ...GrpcCtxOption) gin.HandlerFunc {
+func GinGrpc(option Option, httpHeader bool, grpcCtxOptions ...GrpcCtxOption) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if option == nil {
+			return
+		}
 		// 拿协议
-		key := path2Service(c)
+		key := option.PathToGrpcService(c)
 
 		// 填充协议
 		bodyBuffer, err := c.GetRawData()
@@ -35,13 +42,17 @@ func GinGrpc(path2Service PathToServiceName, grpcHandlers GrpcHandlers, httpHead
 			return
 		}
 
-		handler, ok := grpcHandlers[key]
+		handler, ok := option.GetHandler(key)
 		if !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"code": codes.InvalidArgument, "error_desc": codes.InvalidArgument.String(), "message": "no such proto"})
+			c.JSON(http.StatusBadRequest, gin.H{"code": codes.InvalidArgument, "error_desc": codes.InvalidArgument.String(), "message": "unknown request"})
 			return
 		}
 
-		reqProto := handler.ReqProto
+		if handler == nil || handler.GetProto == nil || handler.HandleProto == nil {
+			return
+		}
+
+		reqProto := handler.GetProto()
 		err = protojson.Unmarshal(bodyBuffer, reqProto)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": codes.InvalidArgument, "error_desc": codes.InvalidArgument.String(), "message": "bad json"})
@@ -52,13 +63,22 @@ func GinGrpc(path2Service PathToServiceName, grpcHandlers GrpcHandlers, httpHead
 		c.Set("gin_grpc_handler", handler)
 
 		// 处理协议
-		handleGrpcRequest(httpHeader, options...)(c)
+		handleGrpcRequest(httpHeader, grpcCtxOptions...)(c)
+
+		if handler.PutProto != nil {
+			handler.PutProto(reqProto)
+		}
 
 		// 返回结果
 		rawErr, ok := c.Get("gin_grpc_err")
 		if ok {
 			s := status.Convert(rawErr.(error))
-			c.JSON(http.StatusOK, gin.H{"code": s.Code(), "error_desc": s.Code().String(), "message": s.Message()})
+			if s.Code() == codes.Internal {
+				c.JSON(http.StatusInternalServerError, gin.H{"code": s.Code(), "error_desc": s.Code().String(), "message": s.Message()})
+				return
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"code": s.Code(), "error_desc": s.Code().String(), "message": s.Message()})
+			}
 			return
 		}
 		rawResp, _ := c.Get("gin_grpc_resp")
@@ -95,7 +115,7 @@ func handleGrpcRequest(httpHeader bool, options ...GrpcCtxOption) gin.HandlerFun
 			ctx = option.Apply(ctx)
 		}
 
-		respProto, err := rawHandler.(Handler).Handle(ctx, reqProto)
+		respProto, err := rawHandler.(*Handler).HandleProto(ctx, reqProto)
 		if err != nil {
 			c.Set("gin_grpc_err", err)
 			return

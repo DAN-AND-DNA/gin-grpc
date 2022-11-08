@@ -1,8 +1,14 @@
 # gin-grpc
 
-利用gin的中间件，以grpc的方式处理restful api请求
+# [中文文档](./README_cn.md)
+1. This middleware enables us to handle requests for different protocols simultaneously with just one piece of code
 
-## 使用场景
-- 需要同时处理restful 和 grpc
-- 网络框架和业务框架相互分离，只使用grpc的方式写业务，比如WebBFF和后排Services统一框架
-- 复用gin和grpc社区中间件，构建自己的微服务框架（定制化的可观测性和性能）
+2. Use Gin's middleware to handle restful api requests in a Grpc fashion
+
+
+## Usage Scenarios
+- Need to handle both Restful Api and Grpc
+
+- Network Framework and Business Framework (for example: MVC) are separated from each other, just need use the grpc way to write business, such as WebBFF and Services can use one Framework
+
+- Reuse Gin and Grpc community middleware to build your own Microservices framework (Customizable for Observability and Performance)

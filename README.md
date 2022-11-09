@@ -1,9 +1,11 @@
 # gin-grpc
+The Gin middleware that forwards grpc requests
+
 
 # [中文文档](./README_cn.md)
 1. This middleware enables us to handle requests for different protocols simultaneously with just one piece of code
 
-2. Use Gin's middleware to handle restful api requests in a Grpc fashion
+2. Here is the Grpc middleware [grpc-route](https://github.com/DAN-AND-DNA/grpc-route) 
 
 
 ## Usage Scenarios

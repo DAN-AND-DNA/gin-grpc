@@ -12,8 +12,7 @@ import (
 )
 
 type Handler struct {
-	GetProto    func() proto.Message
-	PutProto    func(proto.Message)
+	Proto       proto.Message
 	HandleProto func(context.Context, interface{}) (interface{}, error)
 }
 
@@ -48,11 +47,12 @@ func GinGrpc(option Option, httpHeader bool, grpcCtxOptions ...GrpcCtxOption) gi
 			return
 		}
 
-		if handler == nil || handler.GetProto == nil || handler.HandleProto == nil {
+		if handler == nil || handler.Proto == nil || handler.HandleProto == nil {
 			return
 		}
 
-		reqProto := handler.GetProto()
+		//reqProto := handler.GetProto(key)
+		reqProto := proto.Clone(handler.Proto)
 		err = protojson.Unmarshal(bodyBuffer, reqProto)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": codes.InvalidArgument, "error_desc": codes.InvalidArgument.String(), "message": "bad json"})
@@ -65,9 +65,9 @@ func GinGrpc(option Option, httpHeader bool, grpcCtxOptions ...GrpcCtxOption) gi
 		// 处理协议
 		handleGrpcRequest(httpHeader, grpcCtxOptions...)(c)
 
-		if handler.PutProto != nil {
-			handler.PutProto(reqProto)
-		}
+		//if handler.PutProto != nil {
+		//	handler.PutProto(key, reqProto)
+		//}
 
 		// 返回结果
 		rawErr, ok := c.Get("gin_grpc_err")

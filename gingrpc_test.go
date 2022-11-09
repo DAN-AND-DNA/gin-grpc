@@ -35,15 +35,8 @@ func Request(handler http.Handler, method, path string, body *bytes.Buffer, head
 }
 
 type A struct {
-	loginReq *userservice.LoginReq
-}
-
-func (a *A) LoginReq() proto.Message {
-	if a.loginReq == nil {
-		a.loginReq = &userservice.LoginReq{}
-	}
-	a.loginReq.Reset()
-	return a.loginReq
+	//loginReq *userservice.LoginReq
+	//reqPool map[string]*sync.Pool
 }
 
 func (a *A) IsAuthorizedReq() proto.Message {
@@ -76,7 +69,7 @@ func (a *A) ReturnNil(ctx context.Context, req interface{}) (interface{}, error)
 }
 
 func (a *A) LoginForBenchmark(ctx context.Context, req interface{}) (interface{}, error) {
-	return &userservice.LoginResp{}, nil
+	return nil, nil
 }
 
 func (a *A) IsAuthorized(ctx context.Context, req interface{}) (interface{}, error) {
@@ -135,9 +128,9 @@ func TestGinGrpc(t *testing.T) {
 
 	a := &A{}
 	option := &AOption{}
-	option.SetHandler("/user.userservice/login", &Handler{a.LoginReq, nil, a.Login})
-	option.SetHandler("/user.userservice/isauthorized", &Handler{a.IsAuthorizedReq, nil, a.IsAuthorized})
-	option.SetHandler("/user.userservice/returnnil", &Handler{a.LoginReq, nil, a.ReturnNil})
+	option.SetHandler("/user.userservice/login", &Handler{&userservice.LoginReq{}, a.Login})
+	option.SetHandler("/user.userservice/isauthorized", &Handler{&userservice.IsAuthorizedReq{}, a.IsAuthorized})
+	option.SetHandler("/user.userservice/returnnil", &Handler{&userservice.LoginReq{}, a.ReturnNil})
 
 	router := gin.New()
 	router.POST("/test/:pkg/:service/:method", GinGrpc(option, true))

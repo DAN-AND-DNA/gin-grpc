@@ -20,8 +20,8 @@ goarch: amd64
 pkg: github.com/dan-and-dna/gin-grpc
 cpu: Intel(R) Core(TM) i7-8700K CPU @ 3.70GHz
 BenchmarkGinGrpc
-BenchmarkGinGrpc-12      3952821              1460 ns/op            1384 B/op
-              11 allocs/op
+BenchmarkGinGrpc-12      3528080              1675 ns/op            1496 B/op
+              13 allocs/op
 PASS
 ```
 

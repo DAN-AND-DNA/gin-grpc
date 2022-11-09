@@ -2,6 +2,7 @@ package gingrpc
 
 import (
 	"bytes"
+	"github.com/dan-and-dna/gin-grpc/internal/userservice"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
@@ -28,8 +29,8 @@ func BenchmarkGinGrpc(b *testing.B) {
 
 	a := &A{}
 	option := &AOption{}
-	option.SetHandler("/user.userservice/login", &Handler{a.LoginReq, nil, a.LoginForBenchmark})
-	option.SetHandler("/user.userservice/isauthorized", &Handler{a.IsAuthorizedReq, nil, a.IsAuthorized})
+	option.SetHandler("/user.userservice/login", &Handler{&userservice.LoginReq{}, a.LoginForBenchmark})
+	option.SetHandler("/user.userservice/isauthorized", &Handler{&userservice.IsAuthorizedReq{}, a.IsAuthorized})
 
 	router := gin.New()
 	router.POST("/test/:pkg/:service/:method", GinGrpc(option, true))

@@ -35,10 +35,15 @@ func Request(handler http.Handler, method, path string, body *bytes.Buffer, head
 }
 
 type A struct {
+	loginReq *userservice.LoginReq
 }
 
 func (a *A) LoginReq() proto.Message {
-	return &userservice.LoginReq{}
+	if a.loginReq == nil {
+		a.loginReq = &userservice.LoginReq{}
+	}
+	a.loginReq.Reset()
+	return a.loginReq
 }
 
 func (a *A) IsAuthorizedReq() proto.Message {
@@ -52,7 +57,7 @@ func (a *A) Login(ctx context.Context, req interface{}) (interface{}, error) {
 	}
 
 	if reqProto.GetName() == "Dan" && reqProto.GetPassword() == "u12345678" {
-		resp := userservice.LoginResp{
+		resp := &userservice.LoginResp{
 			Token: "token1234567",
 			UserInfo: &userservice.UserInfo{
 				Uid:      "10001",
@@ -64,6 +69,14 @@ func (a *A) Login(ctx context.Context, req interface{}) (interface{}, error) {
 	}
 
 	return nil, status.Error(codes.InvalidArgument, "invalid user or password")
+}
+
+func (a *A) ReturnNil(ctx context.Context, req interface{}) (interface{}, error) {
+	return nil, nil
+}
+
+func (a *A) LoginForBenchmark(ctx context.Context, req interface{}) (interface{}, error) {
+	return &userservice.LoginResp{}, nil
 }
 
 func (a *A) IsAuthorized(ctx context.Context, req interface{}) (interface{}, error) {
@@ -88,10 +101,16 @@ type AOption struct {
 }
 
 func (a *AOption) PathToGrpcService(c *gin.Context) string {
+
 	pkg := c.Param("pkg")
 	service := c.Param("service")
 	method := c.Param("method")
 
+	_ = pkg
+	_ = service
+	_ = method
+
+	//return "/user.userservice/login"
 	return fmt.Sprintf("/%s.%s/%s", pkg, service, method)
 }
 
@@ -118,6 +137,7 @@ func TestGinGrpc(t *testing.T) {
 	option := &AOption{}
 	option.SetHandler("/user.userservice/login", &Handler{a.LoginReq, nil, a.Login})
 	option.SetHandler("/user.userservice/isauthorized", &Handler{a.IsAuthorizedReq, nil, a.IsAuthorized})
+	option.SetHandler("/user.userservice/returnnil", &Handler{a.LoginReq, nil, a.ReturnNil})
 
 	router := gin.New()
 	router.POST("/test/:pkg/:service/:method", GinGrpc(option, true))
@@ -136,6 +156,12 @@ func TestGinGrpc(t *testing.T) {
 			name:     "TestJsonUnmarshalAndMarshal",
 			args:     args{body: `{"name":"Dan","password":"u12345678"}`, path: "/test/user/userservice/login"},
 			want:     `{"token":"token1234567","user_info":{"uid":"10001","username":"Dan","age":99}}`,
+			wantCode: http.StatusOK,
+		},
+		{
+			name:     "TestReturnNil",
+			args:     args{body: `{"name":"Dan","password":"u12345678"}`, path: "/test/user/userservice/returnnil"},
+			want:     `{}`,
 			wantCode: http.StatusOK,
 		},
 		{

@@ -82,6 +82,10 @@ func GinGrpc(option Option, httpHeader bool, grpcCtxOptions ...GrpcCtxOption) gi
 			return
 		}
 		rawResp, _ := c.Get("gin_grpc_resp")
+		if rawResp == nil {
+			c.JSON(http.StatusOK, gin.H{})
+			return
+		}
 		c.JSON(http.StatusOK, rawResp)
 		return
 	}
